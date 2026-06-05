@@ -105,6 +105,8 @@ public class SecurityConfig {
                     "/webhook/stripe/**",
                     "/webhook/paypal/**"
                 ).permitAll()
+                
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                 .requestMatchers(HttpMethod.GET, "/api/fonctionnalites/**").hasAnyRole("USER", "PSYCHOLOGUE", "PSYCHIATRE", "ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/fonctionnalites/**").hasRole("ADMIN")
@@ -235,7 +237,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173", "http://192.168.1.219" ));
+        config.setAllowedOrigins(List.of("http://localhost:5173", "http://192.168.1.219","https://frontend-psyconnect.vercel.app" ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization"));
