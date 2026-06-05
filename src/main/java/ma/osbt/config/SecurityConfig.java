@@ -63,9 +63,10 @@ public class SecurityConfig {
     @Bean
     @Order(1)
     public SecurityFilterChain apiFilterChain(HttpSecurity http) throws Exception {
-        JsonUsernamePasswordAuthenticationFilter jsonAuthFilter = new JsonUsernamePasswordAuthenticationFilter();
-        jsonAuthFilter.setAuthenticationManager(authenticationManager(http.getSharedObject(AuthenticationConfiguration.class)));
-        jsonAuthFilter.setFilterProcessesUrl("/api/auth/login");
+    	JsonUsernamePasswordAuthenticationFilter jsonAuthFilter = new JsonUsernamePasswordAuthenticationFilter();
+    	jsonAuthFilter.setAuthenticationManager(authenticationManager(http.getSharedObject(AuthenticationConfiguration.class)));
+    	jsonAuthFilter.setFilterProcessesUrl("/api/auth/login");
+    	jsonAuthFilter.setSecurityContextRepository(securityContextRepository());
 
         http
             .securityMatcher("/api/**")
