@@ -22,7 +22,7 @@
     <properties>
         <java.version>17</java.version>
     </properties>
-
+<packaging>jar</packaging>
     <dependencies>
 
         <!-- Spring Boot starters -->
