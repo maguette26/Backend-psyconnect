@@ -82,6 +82,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(
                     "/api/auth/**",
+                    "/api/ping",  
                     "/api/public/**",
                     "/api/professionnels/inscription",
                     "/api/fonctionnalites/citations",
@@ -122,7 +123,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/professionnels/tous").hasAnyRole("USER", "ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/reservations/pro/**")
                     .hasAnyRole("PSYCHOLOGUE", "PSYCHIATRE")
-                .requestMatchers(HttpMethod.PATCH, "/api/reservations/statut/**")
+                    .requestMatchers(HttpMethod.PUT, "/api/reservations/statut/**")
                     .hasAnyRole("PSYCHOLOGUE", "PSYCHIATRE")
                 .requestMatchers(HttpMethod.PATCH, "/api/professionnel/prix-consultation")
                     .hasAnyRole("PSYCHOLOGUE", "PSYCHIATRE")
