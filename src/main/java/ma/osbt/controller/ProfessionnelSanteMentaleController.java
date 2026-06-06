@@ -22,7 +22,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
- 
 import ma.osbt.entitie.Consultation;
 import ma.osbt.entitie.Personne;
 import ma.osbt.entitie.ProfessionnelSanteMentale;
@@ -39,13 +38,16 @@ public class ProfessionnelSanteMentaleController {
 
     @Autowired
     private ProfessionnelSanteService service;
-    
+
     @Autowired
     private ConsultationService consultationService;
+
     @Autowired
-    private  ProfessionnelSanteMentaleRepository professionnelRepository;
-    private final String DOSSIER_UPLOAD = "C:\\Users\\Administrateur\\Documents\\upload\\";
- 
+    private ProfessionnelSanteMentaleRepository professionnelRepository;
+
+    // ✅ FIX 1 : chemin Linux compatible Railway (était C:\Users\...)
+    private final String DOSSIER_UPLOAD = "/tmp/uploads/";
+
     @PostMapping("/inscription")
     public ResponseEntity<?> inscrireProfessionnel(
         @RequestParam("specialite") String specialite,
@@ -57,21 +59,18 @@ public class ProfessionnelSanteMentaleController {
         @RequestParam("telephone") String telephone
     ) {
 
-        // ✅ spécialité valide
         if (!specialite.equalsIgnoreCase("psychiatrie") && !specialite.equalsIgnoreCase("psychologie")) {
             return ResponseEntity.badRequest().body(Map.of(
                 "message", "Spécialité invalide. Seules 'psychiatrie' ou 'psychologie' sont acceptées."
             ));
         }
 
-        // ✅ EMAIL déjà utilisé
         if (professionnelRepository.existsByEmail(email)) {
             return ResponseEntity.badRequest().body(Map.of(
                 "message", "Cet email est déjà utilisé !"
             ));
         }
 
-        // ✅ TELEPHONE déjà utilisé (IMPORTANT 👇 ajoute aussi ça)
         if (professionnelRepository.existsByTelephone(telephone)) {
             return ResponseEntity.badRequest().body(Map.of(
                 "message", "Ce numéro de téléphone est déjà utilisé !"
@@ -91,8 +90,8 @@ public class ProfessionnelSanteMentaleController {
             professionnel.setMotDePasse(new BCryptPasswordEncoder().encode(motDePasse));
             professionnel.setTelephone(telephone);
             professionnel.setRole(
-                specialite.equalsIgnoreCase("psychiatrie") 
-                    ? Role.PSYCHIATRE 
+                specialite.equalsIgnoreCase("psychiatrie")
+                    ? Role.PSYCHIATRE
                     : Role.PSYCHOLOGUE
             );
 
@@ -104,15 +103,24 @@ public class ProfessionnelSanteMentaleController {
 
         } catch (Exception e) {
 
-            // 🔥 sécurité ultime (si jamais la DB bloque quand même)
-            if (e.getMessage() != null && e.getMessage().contains("unique_email")) {
-                return ResponseEntity.badRequest().body(Map.of(
-                    "message", "Cet email est déjà utilisé !"
-                ));
+          
+            e.printStackTrace();
+
+            String causeMessage = "Erreur serveur. Veuillez réessayer.";
+
+            if (e.getMessage() != null) {
+                if (e.getMessage().contains("unique_email") || e.getMessage().contains("email")) {
+                    causeMessage = "Cet email est déjà utilisé !";
+                } else if (e.getMessage().contains("telephone")) {
+                    causeMessage = "Ce numéro de téléphone est déjà utilisé !";
+                } else {
+                    // ✅ Exposé temporairement pour debug — à retirer en prod
+                    causeMessage = "Erreur : " + e.getMessage();
+                }
             }
 
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                "message", "Erreur serveur. Veuillez réessayer."
+                "message", causeMessage
             ));
         }
     }
@@ -142,7 +150,6 @@ public class ProfessionnelSanteMentaleController {
         }
     }
 
-    // Sauvegarde du fichier
     private String saveFile(MultipartFile file) throws IOException {
         String nomFichier = System.currentTimeMillis() + "_" + file.getOriginalFilename();
         Path chemin = Paths.get(DOSSIER_UPLOAD + nomFichier);
@@ -151,7 +158,6 @@ public class ProfessionnelSanteMentaleController {
         return nomFichier;
     }
 
-    // Téléchargement du fichier
     @GetMapping("/fichiers/{nomFichier}")
     public ResponseEntity<Resource> getFichier(@PathVariable String nomFichier) throws IOException {
         Path chemin = Paths.get(DOSSIER_UPLOAD + nomFichier);
@@ -166,23 +172,23 @@ public class ProfessionnelSanteMentaleController {
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
             .body(resource);
     }
+
     @PatchMapping("/prix-consultation")
     public ResponseEntity<?> definirPrixConsultation(@AuthenticationPrincipal ProfessionnelSanteMentale pro,
                                                      @RequestParam Double nouveauPrix) {
         if (nouveauPrix == null || nouveauPrix < 0) {
-            return ResponseEntity.badRequest().body("Le prix doit être un nombre positif.");
+            return ResponseEntity.badRequest().body("Le prix doit sêtre un nombre positif.");
         }
-
         pro.setPrixConsultation(nouveauPrix);
         professionnelRepository.save(pro);
         return ResponseEntity.ok("Prix de consultation mis à jour avec succès.");
     }
 
-    // 🔍 Obtenir le prix actuel
     @GetMapping("/prix-consultation")
     public ResponseEntity<Double> getPrixConsultation(@AuthenticationPrincipal ProfessionnelSanteMentale pro) {
         return ResponseEntity.ok(pro.getPrixConsultation());
     }
+
     @GetMapping("/mes-reservations")
     public List<Map<String, Object>> getReservationsPourProfessionnel(@AuthenticationPrincipal Personne personneConnectee) {
         if (!(personneConnectee instanceof ProfessionnelSanteMentale professionnel)) {
@@ -190,7 +196,6 @@ public class ProfessionnelSanteMentaleController {
         }
 
         DateTimeFormatter formatterHeure = DateTimeFormatter.ofPattern("HH'H'mm");
-
         List<Consultation> consultations = consultationService.getConsultationsParProfessionnelId(professionnel.getId());
 
         return consultations.stream().map(consultation -> {
@@ -208,6 +213,7 @@ public class ProfessionnelSanteMentaleController {
             map.put("statut", consultation.getStatut() != null ? consultation.getStatut().name() : null);
             map.put("notesProfessionnel", consultation.getNotesProfessionnel());
             map.put("notesUtilisateur", consultation.getNotesUtilisateur());
+
             if (consultation.getReservation() != null && consultation.getReservation().getUtilisateur() != null) {
                 Utilisateur utilisateur = consultation.getReservation().getUtilisateur();
                 map.put("utilisateurNom", utilisateur.getNom());
@@ -218,5 +224,4 @@ public class ProfessionnelSanteMentaleController {
             return map;
         }).toList();
     }
-    
 }
