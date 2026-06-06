@@ -46,9 +46,10 @@ public class ReservationServiceImpl implements ReservationService {
         this.notificationService = notificationService;
         this.pdfGeneratorService = pdfGeneratorService;
     }
+
     @Override
     public Reservation save(Reservation reservation) {
-    	System.out.println(">>> ReservationServiceImpl.save() appelée avec: " + reservation);
+        System.out.println(">>> ReservationServiceImpl.save() appelée avec: " + reservation);
 
         // 1. Vérification de l'ID de disponibilité
         Long dispoId = reservation.getDisponibilite() != null ? reservation.getDisponibilite().getId() : null;
@@ -71,7 +72,7 @@ public class ReservationServiceImpl implements ReservationService {
         }
 
         LocalTime heureFinConsultation = heureConsultation.plusMinutes(DUREE_CONSULTATION_MINUTES);
-        if (heureConsultation.isBefore(disponibilite.getHeureDebut()) 
+        if (heureConsultation.isBefore(disponibilite.getHeureDebut())
             || heureFinConsultation.isAfter(disponibilite.getHeureFin())) {
             throw new RuntimeException("Créneau horaire hors des heures de disponibilité");
         }
@@ -134,7 +135,7 @@ public class ReservationServiceImpl implements ReservationService {
 
         // Réservation autorisée : finalisation
         reservation.setProfessionnel(pro);
-        reservation.setPrix(pro.getPrixConsultation());
+        reservation.setPrix(pro.getPrixConsultation()); // ✅ prix correct dès la création
         reservation.setHeureReservation(LocalTime.now());
         reservation.setDateReservation(java.sql.Date.valueOf(LocalDate.now()));
 
@@ -155,14 +156,12 @@ public class ReservationServiceImpl implements ReservationService {
 
         Reservation saved = reservationRepository.save(reservation);
 
-        // --- MISE À JOUR DU CHAMP reservee ---
+        // Mise à jour du champ reservee
         disponibilite.setReservee(true);
         disponibiliteRepository.save(disponibilite);
 
         return saved;
     }
-
-
 
     private boolean estDisponible(ProfessionnelSanteMentale pro, LocalDate date, LocalTime heureDebut, int dureeMinutes) {
         List<Consultation> consultations = consultationRepository.findByProfessionnelAndDateConsultation(pro, java.sql.Date.valueOf(date));
@@ -188,6 +187,7 @@ public class ReservationServiceImpl implements ReservationService {
     public List<Reservation> getReservationsPourPro(ProfessionnelSanteMentale professionnel) {
         return reservationRepository.findByProfessionnel(professionnel);
     }
+
     @Override
     public Reservation validerOuRefuserReservation(Long id, String statutStr, ProfessionnelSanteMentale professionnel) {
         Reservation reservation = reservationRepository.findById(id)
@@ -207,7 +207,6 @@ public class ReservationServiceImpl implements ReservationService {
         String prenomUtilisateur = reservation.getUtilisateur().getPrenom();
         String nomUtilisateur = reservation.getUtilisateur().getNom();
 
-        // 👉 Affichage côté professionnel dans la console
         System.out.printf("👤 Réservation faite par : %s %s%n", prenomUtilisateur, nomUtilisateur);
 
         switch (statutValidation) {
@@ -216,20 +215,40 @@ public class ReservationServiceImpl implements ReservationService {
                 reservation.setStatutValidation(StatutValidation.VALIDE);
                 reservationRepository.save(reservation);
 
-                // Vérifier si consultation existe déjà
                 Optional<Consultation> optConsultation = consultationRepository.findByReservation(reservation);
                 if (optConsultation.isEmpty()) {
                     Consultation consultation = new Consultation();
-                    consultation.setDateConsultation(java.sql.Date.valueOf(reservation.getDisponibilite().getDate()));
-                    consultation.setHeure(reservation.getDisponibilite().getHeureDebut());
+                    consultation.setDateConsultation(
+                        java.sql.Date.valueOf(reservation.getDisponibilite().getDate())
+                    );
+                    // ✅ CORRECTION PRINCIPALE : heure du créneau choisi, pas l'heure de début de la dispo
+                    consultation.setHeure(reservation.getHeureConsultation());
                     consultation.setDureeMinutes(DUREE_CONSULTATION_MINUTES);
                     consultation.setProfessionnel(reservation.getProfessionnel());
                     consultation.setReservation(reservation);
+                    // ✅ prix récupéré depuis la réservation (= prixConsultation du pro, jamais 0)
                     consultation.setPrix(reservation.getPrix());
                     consultation.setStatut(StatutConsultation.EN_ATTENTE);
                     consultationRepository.save(consultation);
                 } else {
-                    System.out.println("ℹ️ Consultation déjà créée pour cette réservation");
+                    // ✅ Correction des anciennes consultations créées avec la mauvaise heure
+                    Consultation existing = optConsultation.get();
+                    boolean updated = false;
+                    if (!reservation.getHeureConsultation().equals(existing.getHeure())) {
+                        existing.setHeure(reservation.getHeureConsultation());
+                        updated = true;
+                    }
+                    if (existing.getPrix() == null || existing.getPrix() == 0) {
+                        existing.setPrix(reservation.getPrix());
+                        updated = true;
+                    }
+                    if (updated) {
+                        consultationRepository.save(existing);
+                        System.out.println("ℹ️ Consultation corrigée — heure: "
+                            + reservation.getHeureConsultation() + ", prix: " + reservation.getPrix());
+                    } else {
+                        System.out.println("ℹ️ Consultation déjà à jour pour cette réservation");
+                    }
                 }
 
                 String html = getMessageHtml(
@@ -269,19 +288,16 @@ public class ReservationServiceImpl implements ReservationService {
         Reservation reservation = reservationRepository.findById(reservationId)
             .orElseThrow(() -> new RuntimeException("Réservation introuvable avec l'id: " + reservationId));
 
-        // Si réservation déjà payée, on ne fait rien
         if (ReservationStatut.PAYEE.equals(reservation.getStatut())) {
             System.out.println("Réservation déjà payée.");
             return;
         }
 
-        // Valider la réservation si ce n'est pas déjà fait
         if (!StatutValidation.VALIDE.equals(reservation.getStatutValidation())) {
             reservation.setStatutValidation(StatutValidation.VALIDE);
             System.out.println("Réservation validée automatiquement.");
         }
 
-        // Passer la réservation à payée
         reservation.setStatut(ReservationStatut.PAYEE);
         reservationRepository.save(reservation);
 
@@ -291,7 +307,6 @@ public class ReservationServiceImpl implements ReservationService {
         consultation.setStatut(StatutConsultation.CONFIRMEE);
         consultationRepository.save(consultation);
 
-        // Génération du PDF
         byte[] pdfBytes = null;
         try {
             pdfBytes = pdfGeneratorService.generateReceiptPdf(reservation);
@@ -326,7 +341,6 @@ public class ReservationServiceImpl implements ReservationService {
         return reservationRepository.findByUtilisateurId(utilisateurId);
     }
 
-
     @Override
     public Reservation annulerReservation(Long reservationId, Long utilisateurId) {
         Reservation reservation = reservationRepository.findById(reservationId)
@@ -336,7 +350,6 @@ public class ReservationServiceImpl implements ReservationService {
             throw new RuntimeException("Action non autorisée");
         }
 
-        // ✅ Accepte EN_ATTENTE et EN_ATTENTE_PAIEMENT
         if (!(ReservationStatut.EN_ATTENTE.equals(reservation.getStatut()) ||
               ReservationStatut.EN_ATTENTE_PAIEMENT.equals(reservation.getStatut()))) {
             throw new RuntimeException("Seules les réservations non payées peuvent être annulées.");
@@ -345,7 +358,6 @@ public class ReservationServiceImpl implements ReservationService {
         reservation.setStatut(ReservationStatut.ANNULEE);
         Reservation updated = reservationRepository.save(reservation);
 
-        // ✅ Libérer la disponibilité
         Disponibilite dispo = updated.getDisponibilite();
         if (dispo != null) {
             majReserveeDisponibilite(dispo);
@@ -363,7 +375,6 @@ public class ReservationServiceImpl implements ReservationService {
         return updated;
     }
 
-   
     private String getMessageHtml(String titre, String salutation, String contenu, String couleur) {
         return """
             <html>
@@ -378,10 +389,12 @@ public class ReservationServiceImpl implements ReservationService {
             </html>
             """.formatted(couleur, couleur, titre, salutation, contenu);
     }
+
     @Override
     public List<Reservation> getReservationsEnAttentePaiement(Long utilisateurId) {
         return reservationRepository.findByUtilisateurIdAndStatut(utilisateurId, ReservationStatut.EN_ATTENTE_PAIEMENT);
     }
+
     @Transactional
     public void markAsPaid(Long reservationId) {
         Reservation reservation = reservationRepository.findById(reservationId)
@@ -391,15 +404,16 @@ public class ReservationServiceImpl implements ReservationService {
             throw new RuntimeException("Réservation pas en attente de paiement");
         }
 
-        reservation.setStatut(ReservationStatut.PAYEE); // adapte ce statut selon ton enum
+        reservation.setStatut(ReservationStatut.PAYEE);
         reservationRepository.save(reservation);
     }
+
     @Override
     public Reservation findById(Long id) {
         return reservationRepository.findById(id).orElse(null);
     }
+
     private void majReserveeDisponibilite(Disponibilite disponibilite) {
-        // Cherche les réservations actives (statuts valides) sur cette disponibilité
         boolean aDesReservationsActives = reservationRepository.existsByDisponibiliteIdAndStatutIn(
             disponibilite.getId(),
             List.of(
@@ -409,11 +423,9 @@ public class ReservationServiceImpl implements ReservationService {
             )
         );
 
-        // Met à jour la disponibilité selon s'il y a des réservations actives ou pas
         if (!aDesReservationsActives && disponibilite.isReservee()) {
             disponibilite.setReservee(false);
             disponibiliteRepository.save(disponibilite);
         }
     }
-
 }
