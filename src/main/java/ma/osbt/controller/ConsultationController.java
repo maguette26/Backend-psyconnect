@@ -123,9 +123,9 @@ public class ConsultationController {
                     map.put("prix", c.getPrix());
                     map.put("statut", c.getStatut().name());
 
-                    map.put("patientNom", c.getReservation().getUtilisateur().getNom());
-                    map.put("patientPrenom", c.getReservation().getUtilisateur().getPrenom());
-                    map.put("patientEmail", c.getReservation().getUtilisateur().getEmail());
+                    map.put("utilisateurNom", c.getReservation().getUtilisateur().getNom());
+                    map.put("utilisateurPrenom", c.getReservation().getUtilisateur().getPrenom());
+                    map.put("utilisateurEmail", c.getReservation().getUtilisateur().getEmail());
 
                     return map;
                 })
