@@ -22,37 +22,48 @@ public class ChatService {
     private final MessageRepository messageRepository;
     private final ConsultationRepository consultationRepository;
 
-    /**
-     * Vérifie que l'utilisateur a accès à la consultation ET qu'elle est active.
-     */
-
     public Consultation validateAccess(Long consultationId, Long userId) {
-        Consultation consultation = consultationRepository
-            .findByIdAndUserId(consultationId, userId)
-            .orElseThrow(() -> new AccessDeniedException(
-                "Accès refusé à cette consultation"
-            ));
-        if (consultation.getStatut() != StatutConsultation.CONFIRMEE) {
-            throw new IllegalStateException(
-                "La consultation n'est pas accessible (statut: "
-                + consultation.getStatut() + ")"
-            );
+
+        Consultation consultation = consultationRepository.findById(consultationId)
+                .orElseThrow(() -> new RuntimeException("Consultation introuvable"));
+
+        if (consultation.getReservation() == null) {
+            throw new RuntimeException("Reservation manquante");
         }
+
+        if (consultation.getProfessionnel() == null) {
+            throw new RuntimeException("Professionnel manquant");
+        }
+
+        boolean isUser = consultation.getReservation().getUtilisateur().getId().equals(userId);
+        boolean isPro = consultation.getProfessionnel().getId().equals(userId);
+
+        if (!isUser && !isPro) {
+            throw new AccessDeniedException("Accès refusé à cette consultation");
+        }
+
+        if (consultation.getStatut() != StatutConsultation.CONFIRMEE) {
+            throw new IllegalStateException("Consultation non accessible");
+        }
+
         return consultation;
     }
 
     @Transactional(readOnly = true)
     public List<MessageDTO> getHistory(Long consultationId, Long userId) {
         validateAccess(consultationId, userId);
+
         return messageRepository.findByConsultationId(consultationId)
-            .stream()
-            .map(this::toDTO)
-            .collect(Collectors.toList());
+                .stream()
+                .map(this::toDTO)
+                .toList();
     }
 
     @Transactional
     public Message saveMessage(SendMessageRequest request, Personne expediteur) {
-        Consultation consultation = validateAccess(request.getConsultationId(), expediteur.getId());
+
+        Consultation consultation =
+                validateAccess(request.getConsultationId(), expediteur.getId());
 
         Message message = new Message();
         message.setContenu(request.getContenu());
@@ -63,11 +74,13 @@ public class ChatService {
         message.setConsultation(consultation);
 
         Long utilisateurId = consultation.getReservation().getUtilisateur().getId();
+
         if (expediteur.getId().equals(utilisateurId)) {
             message.setDestinataire(consultation.getProfessionnel());
         } else {
             message.setDestinataire(consultation.getReservation().getUtilisateur());
         }
+
         return messageRepository.save(message);
     }
 
@@ -81,14 +94,16 @@ public class ChatService {
         dto.setConsultationId(m.getConsultation().getIdConsultation());
         dto.setInapproprie(m.isInapproprie());
         dto.setExpediteurId(m.getExpediteur().getId());
-        // Respecte l'anonymat
+
         if (!m.isAnonymat()) {
-            dto.setExpediteurNom(m.getExpediteur().getNom() + " " + m.getExpediteur().getPrenom());
+            dto.setExpediteurNom(
+                    m.getExpediteur().getNom() + " " + m.getExpediteur().getPrenom()
+            );
         }
+
         return dto;
     }
 
-    // Exception interne
     public static class AccessDeniedException extends RuntimeException {
         public AccessDeniedException(String msg) { super(msg); }
     }
