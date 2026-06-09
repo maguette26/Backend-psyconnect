@@ -20,9 +20,6 @@ public class PaymentController {
     @Qualifier("stripePaymentService")
     private PaymentService stripePaymentService;
     @Autowired
-    private ReservationRepository reservationRepository;
-
-    @Autowired
     @Qualifier("payPalPaymentService")
     private PaymentService payPalPaymentService;
     @Autowired
@@ -97,23 +94,7 @@ public class PaymentController {
     
     
 
-    @PostMapping("/confirm")
-    public ResponseEntity<?> confirmPayment(@RequestBody Map<String, Object> body) {
-
-        Long reservationId = Long.valueOf(body.get("reservationId").toString());
-
-        Reservation res = reservationRepository.findById(reservationId)
-                .orElseThrow(() -> new RuntimeException("Réservation introuvable"));
-
-        // 🔥 éviter double paiement
-        if ("PAYE".equals(res.getStatut())) {
-            return ResponseEntity.ok("Déjà payé");
-        }
-
-        reservationService.handlePaymentSucceeded(reservationId);
-        System.out.println("💳 Payment confirmé pour reservation " + reservationId);
-        return ResponseEntity.ok("OK");
-    }
+    
     
 
 }
