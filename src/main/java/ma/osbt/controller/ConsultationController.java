@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -60,6 +61,7 @@ public class ConsultationController {
                             ? consultation.getStatut().name()
                             : null
             );
+            map.put("dureeMinutes", consultation.getDureeMinutes());
 
             map.put("notesProfessionnel", consultation.getNotesProfessionnel());
             map.put("notesUtilisateur", consultation.getNotesUtilisateur());
@@ -130,5 +132,32 @@ public class ConsultationController {
                     return map;
                 })
                 .toList();
+    }
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getConsultationById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails user) {
+
+        Consultation c = consultationService.findById(id);
+
+        if (c == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Map<String, Object> map = new HashMap<>();
+
+        map.put("id", c.getIdConsultation());
+        map.put("date", c.getDateConsultation());
+        map.put("heure", c.getHeure() != null ? c.getHeure().toString() : null);
+        map.put("statut", c.getStatut().name());
+        map.put("prix", c.getPrix());
+
+        if (c.getProfessionnel() != null) {
+            map.put("professionnelPrenom", c.getProfessionnel().getPrenom());
+            map.put("professionnelNom", c.getProfessionnel().getNom());
+            map.put("specialite", c.getProfessionnel().getSpecialite());
+        }
+
+        return ResponseEntity.ok(map);
     }
 }
