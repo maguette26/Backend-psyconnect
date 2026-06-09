@@ -71,7 +71,7 @@ public class SecurityConfig {
         jsonAuthFilter.setJwtUtils(jwtUtils);
 
         http
-            .securityMatcher("/api/**")
+            .securityMatcher("/api/**", "/auth/**")
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session
@@ -150,7 +150,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/forum/admin/tous").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/messages/admin/supprimer/**")
                     .hasRole("ADMIN")
-                    .requestMatchers("/api/chat/**").permitAll()
+                    .requestMatchers("/api/chat/**").authenticated()
                    // .hasAnyRole("USER", "PSYCHOLOGUE", "PSYCHIATRE", "ADMIN")  
                 .anyRequest().authenticated()
             )
