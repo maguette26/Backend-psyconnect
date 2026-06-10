@@ -268,7 +268,10 @@ public class ReservationController {
         }).toList();
     }
  
-
+    @GetMapping("/ping")
+    public ResponseEntity<String> ping() {
+        return ResponseEntity.ok("pong");
+    }
 
 
 }
