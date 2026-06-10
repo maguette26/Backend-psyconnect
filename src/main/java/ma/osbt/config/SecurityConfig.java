@@ -151,7 +151,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/api/messages/admin/supprimer/**")
                     .hasRole("ADMIN")
                     .requestMatchers("/api/chat/**").authenticated()
-                   // .hasAnyRole("USER", "PSYCHOLOGUE", "PSYCHIATRE", "ADMIN")  
+                   
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())
