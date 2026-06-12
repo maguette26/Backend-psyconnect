@@ -34,9 +34,21 @@ public class StripePaymentService implements PaymentService {
         Reservation reservation = reservationRepository.findById(reservationId)
             .orElseThrow(() -> new RuntimeException("Réservation introuvable"));
 
-        long amountInCents = (long) (reservation.getPrix() * 100);  
+        // ✅ Fallback prix
+        Double prix = reservation.getPrix();
 
-        System.out.println("➡️ Création du PaymentIntent pour la réservation ID = " + reservationId);
+        if (prix == null || prix <= 0) {
+            if (reservation.getProfessionnel() != null) {
+                prix = reservation.getProfessionnel().getPrixConsultation();
+                System.out.println("⚠️ Fallback pro : " + prix);
+            }
+        }
+
+        if (prix == null || prix <= 0) {
+            throw new RuntimeException("Prix introuvable pour la réservation #" + reservationId);
+        }
+
+        long amountInCents = Math.round(prix * 100);
 
         PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
             .setAmount(amountInCents)
@@ -49,17 +61,8 @@ public class StripePaymentService implements PaymentService {
             .putMetadata("reservation_id", reservationId.toString())
             .setDescription("Réservation #" + reservationId)
             .build();
-        System.out.println("=== STRIPE DEBUG ===");
-        System.out.println("Reservation ID = " + reservationId);
-        System.out.println("Amount = " + amountInCents);
-        System.out.println("Currency = " + currency);
-        System.out.println("API Key loaded = " + (Stripe.apiKey != null));
+
         PaymentIntent intent = PaymentIntent.create(params);
-
-        // ✅ Vérifie ce que Stripe a bien reçu
-        System.out.println("✅ PaymentIntent créé : " + intent.getId());
-        System.out.println("📦 Metadata envoyée : " + intent.getMetadata());
-
         return intent.getClientSecret();
     }
 	@Override
