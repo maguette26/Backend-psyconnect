@@ -64,7 +64,9 @@ public class ReservationServiceImpl implements ReservationService {
         if (pro == null) {
             throw new RuntimeException("Professionnel de santé non trouvé");
         }
-
+        if (pro.getPrixConsultation() == null || pro.getPrixConsultation() <= 0) {
+            throw new RuntimeException("Ce professionnel n'a pas encore défini son prix de consultation.");
+        }
         LocalDate dateConsultation = disponibilite.getDate();
         LocalTime heureConsultation = reservation.getHeureConsultation();
         if (heureConsultation == null) {

@@ -128,8 +128,8 @@ public class ProfessionnelSanteMentaleController {
     @PatchMapping("/prix-consultation")
     public ResponseEntity<?> definirPrixConsultation(@AuthenticationPrincipal ProfessionnelSanteMentale pro,
                                                      @RequestParam Double nouveauPrix) {
-        if (nouveauPrix == null || nouveauPrix < 0) {
-            return ResponseEntity.badRequest().body("Le prix doit être un nombre positif.");
+        if (nouveauPrix == null || nouveauPrix <= 0) { // ✅ était < 0, maintenant <= 0
+            return ResponseEntity.badRequest().body("Le prix doit être supérieur à 0.");
         }
         pro.setPrixConsultation(nouveauPrix);
         professionnelRepository.save(pro);
