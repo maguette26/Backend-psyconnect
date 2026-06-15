@@ -56,26 +56,23 @@ public class StripeWebhookController {
                         .getAsJsonObject("object")
                         .getAsJsonObject("metadata");
 
-                String userId =
-                    metadata.get("user_id").getAsString();
+                String email =
+                	    metadata.get("email").getAsString();
 
-                Utilisateur utilisateur =
-                    utilisateurRepository.findById(
-                        Long.parseLong(userId)
-                    ).orElse(null);
+                	Utilisateur utilisateur =
+                	    utilisateurRepository.findByEmail(email)
+                	        .orElse(null);
+                	if (utilisateur != null) {
 
-                if (utilisateur != null) {
+                	    utilisateur.setRole(Role.PREMIUM);
 
-                    utilisateur.setRole(Role.PREMIUM);
+                	    utilisateurRepository.save(utilisateur);
 
-                    utilisateurRepository.save(utilisateur);
-
-                    System.out.println(
-                        "✅ Utilisateur passé PREMIUM : "
-                        + utilisateur.getEmail()
-                    );
-                }
-
+                	    System.out.println(
+                	        "✅ PREMIUM activé pour : "
+                	        + utilisateur.getEmail()
+                	    );
+                	}
                 return ResponseEntity.ok("Premium activé");
             }
             

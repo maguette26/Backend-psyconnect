@@ -6,5 +6,5 @@ import lombok.Data;
 public class PremiumRequest {
 
     private String plan;
-    private String userId;
+     
 }

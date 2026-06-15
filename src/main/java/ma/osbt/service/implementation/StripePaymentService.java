@@ -116,7 +116,7 @@ public class StripePaymentService implements PaymentService {
     @Override
     public String createPremiumCheckoutSession(
             String planId,
-            String userId) throws Exception {
+            String email) throws Exception {
 
         long amount;
         String planName;
@@ -151,7 +151,7 @@ public class StripePaymentService implements PaymentService {
                 .setCancelUrl(
                     "https://frontend-psyconnect.vercel.app/devenir-premium"
                 )
-                .putMetadata("user_id", userId)
+                .putMetadata("email", email)
                 .putMetadata("plan", planId)
                 .addLineItem(
                     SessionCreateParams.LineItem.builder()

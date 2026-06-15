@@ -12,7 +12,7 @@ import ma.osbt.entitie.Reservation;
 import ma.osbt.repository.ReservationRepository;
 import ma.osbt.service.PaymentService;
 import ma.osbt.service.ReservationService;
-
+import org.springframework.security.core.Authentication;
 @RestController
 @RequestMapping("/api/payments")
 public class PaymentController {
@@ -86,14 +86,17 @@ public class PaymentController {
 
     @PostMapping("/premium-checkout")
     public ResponseEntity<?> premiumCheckout(
-            @RequestBody PremiumRequest request) {
+            @RequestBody PremiumRequest request,
+            Authentication authentication) {
 
         try {
+
+            String email = authentication.getName();
 
             String url =
                 stripePaymentService.createPremiumCheckoutSession(
                     request.getPlan(),
-                    request.getUserId()
+                    email
                 );
 
             return ResponseEntity.ok(
@@ -109,10 +112,6 @@ public class PaymentController {
                 ));
         }
     }
-    
-    
-
-    
     
 
 }
