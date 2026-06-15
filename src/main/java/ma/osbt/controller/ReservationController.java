@@ -19,6 +19,7 @@ import ma.osbt.entitie.ProfessionnelSanteMentale;
 import ma.osbt.entitie.Reservation;
 import ma.osbt.entitie.ReservationStatut;
 import ma.osbt.entitie.Utilisateur;
+import ma.osbt.repository.ConsultationRepository;
 import ma.osbt.service.NotificationService;
 import ma.osbt.service.PaymentService;
 import ma.osbt.service.ReservationService;
@@ -34,7 +35,8 @@ public class ReservationController {
 
     @Autowired
     private NotificationService notificationService;
-
+@Autowired
+private ConsultationRepository consultationRepository;
     @Autowired
     private PdfGeneratorService pdfGeneratorService;
 
@@ -272,6 +274,29 @@ public class ReservationController {
     public ResponseEntity<String> ping() {
         return ResponseEntity.ok("pong");
     }
+    
+    @DeleteMapping("/supprimer/{id}")
+    public ResponseEntity<?> supprimerReservation(@PathVariable Long id,
+                                                 @AuthenticationPrincipal Personne personne) {
+        Reservation r = reservationService.findById(id);
+
+        if (r == null) {
+            return ResponseEntity.status(404).body("Introuvable");
+        }
+
+        if (!(r.getStatut() == ReservationStatut.ANNULEE ||
+              r.getStatut() == ReservationStatut.REFUSE)) {
+            return ResponseEntity.status(403).body("Suppression non autorisée");
+        }
+
+        // Supprimer la consultation liée si elle existe
+        consultationRepository.findByReservation(r)
+            .ifPresent(c -> consultationRepository.delete(c));
+
+        reservationService.deleteById(id);
+        return ResponseEntity.ok("Supprimée");
+    }
+   
 
 
 }

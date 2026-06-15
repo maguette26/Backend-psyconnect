@@ -15,6 +15,5 @@ public interface ConsultationService {
 
 	void deleteById(Long id);
 
-	 
 
 }
