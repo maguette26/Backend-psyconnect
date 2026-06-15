@@ -92,4 +92,10 @@ public class PayPalPaymentService implements PaymentService {
 		// TODO Auto-generated method stub
 		return null;
 	}
+
+	@Override
+	public String createPremiumCheckoutSession(String planId, String userId) throws Exception {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

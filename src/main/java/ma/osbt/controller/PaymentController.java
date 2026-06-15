@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import ma.osbt.dto.PremiumRequest;
 import ma.osbt.entitie.Reservation;
 import ma.osbt.repository.ReservationRepository;
 import ma.osbt.service.PaymentService;
@@ -81,33 +82,31 @@ public class PaymentController {
         }
     }
     
-    @PostMapping("/create-premium")
-    public ResponseEntity<?> createPremiumPayment(@RequestBody Map<String, Object> data) {
+
+
+    @PostMapping("/premium-checkout")
+    public ResponseEntity<?> premiumCheckout(
+            @RequestBody PremiumRequest request) {
+
         try {
-            String planId = data.get("planId").toString(); // "monthly", "quarterly", "annually"
-            String paymentMethod = data.get("paymentMethod").toString().toLowerCase();
-            String successUrl = data.getOrDefault("successUrl", "").toString();
-            String cancelUrl = data.getOrDefault("cancelUrl", "").toString();
-            String currency = data.getOrDefault("currency", "EUR").toString();
-            String userId = data.get("userId").toString(); // ID utilisateur
 
-            String result;
-            switch (paymentMethod) {
-                case "stripe":
-                    result = stripePaymentService.createPremiumPaymentIntent(planId, currency, successUrl, cancelUrl, userId);
-                    return ResponseEntity.ok(Map.of("clientSecret", result));
+            String url =
+                stripePaymentService.createPremiumCheckoutSession(
+                    request.getPlan(),
+                    request.getUserId()
+                );
 
-                case "paypal":
-                    result = payPalPaymentService.createPremiumPaymentIntent(planId, currency, successUrl, cancelUrl, userId);
-                    return ResponseEntity.ok(Map.of("approvalUrl", result));
-
-                default:
-                    return ResponseEntity.badRequest().body("Méthode de paiement inconnue");
-            }
+            return ResponseEntity.ok(
+                Map.of("url", url)
+            );
 
         } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body("Erreur lors de la création du paiement Premium : " + e.getMessage());
+
+            return ResponseEntity.badRequest()
+                .body(Map.of(
+                    "error",
+                    e.getMessage()
+                ));
         }
     }
     

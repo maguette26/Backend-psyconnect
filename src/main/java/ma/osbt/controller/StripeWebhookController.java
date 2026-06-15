@@ -6,11 +6,9 @@ import com.stripe.model.PaymentIntent;
 import com.stripe.net.Webhook;
 
 import jakarta.servlet.http.HttpServletRequest;
-import ma.osbt.dto.PremiumRequest;
-import ma.osbt.service.ReservationService;
-import ma.osbt.service.implementation.StripePaymentService;
 
-import org.apache.tomcat.util.net.openssl.ciphers.Authentication;
+import ma.osbt.service.ReservationService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +16,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
+import ma.osbt.entitie.Role;
+import ma.osbt.entitie.Utilisateur;
+import ma.osbt.repository.UtilisateurRepository;
 
 @RestController
 @RequestMapping("/webhook/stripe")
@@ -29,8 +29,9 @@ public class StripeWebhookController {
 
     @Autowired
     private ReservationService reservationService;
+    
     @Autowired
-    private StripePaymentService stripePaymentService;
+    private UtilisateurRepository utilisateurRepository;
 
     @PostMapping
     public ResponseEntity<String> handleStripeWebhook(HttpServletRequest request,
@@ -43,6 +44,41 @@ public class StripeWebhookController {
 
             Event event = Webhook.constructEvent(payload, sigHeader, endpointSecret);
             System.out.println("✅ Événement Stripe : " + event.getType());
+            if ("checkout.session.completed".equals(event.getType())) {
+
+                com.google.gson.JsonObject jsonObject =
+                    com.google.gson.JsonParser.parseString(payload)
+                        .getAsJsonObject();
+
+                com.google.gson.JsonObject metadata =
+                    jsonObject
+                        .getAsJsonObject("data")
+                        .getAsJsonObject("object")
+                        .getAsJsonObject("metadata");
+
+                String userId =
+                    metadata.get("user_id").getAsString();
+
+                Utilisateur utilisateur =
+                    utilisateurRepository.findById(
+                        Long.parseLong(userId)
+                    ).orElse(null);
+
+                if (utilisateur != null) {
+
+                    utilisateur.setRole(Role.PREMIUM);
+
+                    utilisateurRepository.save(utilisateur);
+
+                    System.out.println(
+                        "✅ Utilisateur passé PREMIUM : "
+                        + utilisateur.getEmail()
+                    );
+                }
+
+                return ResponseEntity.ok("Premium activé");
+            }
+            
 
             if ("payment_intent.succeeded".equals(event.getType())) {
                 // Récupérer l'ID du PaymentIntent depuis le JSON brut (payload)
@@ -88,47 +124,5 @@ public class StripeWebhookController {
             return ResponseEntity.status(500).body("Erreur serveur: " + e.getMessage());
         }
     }
-    @PostMapping("/premium")
-    public ResponseEntity<Map<String, String>> createPremiumPayment(
-            @RequestBody PremiumRequest request) {
 
-        try {
-
-            String clientSecret =
-                    stripePaymentService.createPremiumPaymentIntent(
-                            request.getPlan(),
-                            "eur",
-                            "",
-                            "",
-                            request.getUserId());
-
-            return ResponseEntity.ok(
-                    Map.of("clientSecret", clientSecret));
-
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-    @PostMapping("/premium-checkout")
-    public ResponseEntity<?> premiumCheckout(
-            @RequestBody PremiumRequest request) {
-
-        try {
-
-            String url =
-                stripePaymentService.createPremiumCheckoutSession(
-                    request.getPlan(),
-                    request.getUserId()
-                );
-
-            return ResponseEntity.ok(
-                Map.of("url", url)
-            );
-
-        } catch (Exception e) {
-
-            return ResponseEntity.badRequest()
-                .body(Map.of("error", e.getMessage()));
-        }
-    }
 }

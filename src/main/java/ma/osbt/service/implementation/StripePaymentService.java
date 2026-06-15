@@ -113,8 +113,7 @@ public class StripePaymentService implements PaymentService {
 
         return intent.getClientSecret();
     }
- 
-
+    @Override
     public String createPremiumCheckoutSession(
             String planId,
             String userId) throws Exception {
@@ -147,7 +146,7 @@ public class StripePaymentService implements PaymentService {
             SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
                 .setSuccessUrl(
-                    "https://frontend-psyconnect.vercel.app/premium-success?session_id={CHECKOUT_SESSION_ID}"
+                    "https://frontend-psyconnect.vercel.app/premium-success"
                 )
                 .setCancelUrl(
                     "https://frontend-psyconnect.vercel.app/devenir-premium"
@@ -176,4 +175,5 @@ public class StripePaymentService implements PaymentService {
 
         return session.getUrl();
     }
+    
 }
