@@ -51,7 +51,8 @@ public class StripeWebhookController {
             );
 
             System.out.println("Stripe Event: " + event.getType());
-
+           
+            System.out.println("ROLE SET = PREMIUM");
             // =========================
             // 1. PREMIUM ACTIVATION
             // =========================
@@ -66,6 +67,7 @@ public class StripeWebhookController {
                 }
 
                 String email = session.getMetadata().get("email");
+                System.out.println("USER EMAIL = " + email);
 
                 if (email == null) {
                     return ResponseEntity.badRequest().body("Email metadata manquant");
@@ -118,4 +120,5 @@ public class StripeWebhookController {
             return ResponseEntity.status(500).body("Erreur serveur: " + e.getMessage());
         }
     }
+    
 }
