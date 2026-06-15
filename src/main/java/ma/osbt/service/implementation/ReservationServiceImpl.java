@@ -430,4 +430,15 @@ public class ReservationServiceImpl implements ReservationService {
             disponibiliteRepository.save(disponibilite);
         }
     }
+
+    @Override
+    public void deleteById(Long id) {
+        Reservation reservation = reservationRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Réservation introuvable"));
+
+        reservation.setStatut(ReservationStatut.ANNULEE);
+        reservationRepository.save(reservation);
+    }
+ 
+	 
 }

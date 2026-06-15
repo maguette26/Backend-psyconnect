@@ -62,5 +62,7 @@ public class ConsultationServiceImpl implements ConsultationService {
     public List<Consultation> getConsultationsParProfessionnelId(Long professionnelId) {
         return consultationRepository.findByProfessionnelId(professionnelId);
     }
-
+    public void deleteById(Long id) {
+        consultationRepository.deleteById(id);
+    }
     }

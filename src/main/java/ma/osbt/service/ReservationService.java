@@ -21,6 +21,7 @@ public interface ReservationService {
 	void markAsPaid(Long id);
 	  Reservation findById(Long id);
 	//boolean existsReservationForUserProDate(Long id, Long professionnelId, LocalDate date);
+	 void deleteById(Long id);
 	 
     
  }
