@@ -10,6 +10,9 @@ import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
+import com.stripe.model.checkout.Session;
+import com.stripe.param.checkout.SessionCreateParams;
+
 import ma.osbt.entitie.Reservation;
 import ma.osbt.repository.ReservationRepository;
 import ma.osbt.service.PaymentService;
@@ -65,11 +68,112 @@ public class StripePaymentService implements PaymentService {
         PaymentIntent intent = PaymentIntent.create(params);
         return intent.getClientSecret();
     }
-	@Override
-	public String createPremiumPaymentIntent(String planId, String currency, String successUrl, String cancelUrl,
-			String userId) throws Exception {
-		// TODO Auto-generated method stub
-		return null;
-	}
+    @Override
+    public String createPremiumPaymentIntent(
+            String planId,
+            String currency,
+            String successUrl,
+            String cancelUrl,
+            String userId) throws Exception {
 
+        long amount;
+
+        switch (planId) {
+            case "monthly":
+                amount = 300; // 3€
+                break;
+
+            case "quarterly":
+                amount = 1000; // 10€
+                break;
+
+            case "annually":
+                amount = 3000; // 30€
+                break;
+
+            default:
+                throw new RuntimeException("Plan invalide");
+        }
+
+        PaymentIntentCreateParams params =
+            PaymentIntentCreateParams.builder()
+                .setAmount(amount)
+                .setCurrency(currency.toLowerCase())
+                .putMetadata("user_id", userId)
+                .putMetadata("plan", planId)
+                .setDescription("Abonnement Premium " + planId)
+                .setAutomaticPaymentMethods(
+                    PaymentIntentCreateParams.AutomaticPaymentMethods.builder()
+                        .setEnabled(true)
+                        .build()
+                )
+                .build();
+
+        PaymentIntent intent = PaymentIntent.create(params);
+
+        return intent.getClientSecret();
+    }
+ 
+
+    public String createPremiumCheckoutSession(
+            String planId,
+            String userId) throws Exception {
+
+        long amount;
+        String planName;
+
+        switch (planId) {
+
+            case "monthly":
+                amount = 300L;
+                planName = "Premium Mensuel";
+                break;
+
+            case "quarterly":
+                amount = 1000L;
+                planName = "Premium Trimestriel";
+                break;
+
+            case "annually":
+                amount = 3000L;
+                planName = "Premium Annuel";
+                break;
+
+            default:
+                throw new RuntimeException("Plan invalide");
+        }
+
+        SessionCreateParams params =
+            SessionCreateParams.builder()
+                .setMode(SessionCreateParams.Mode.PAYMENT)
+                .setSuccessUrl(
+                    "https://frontend-psyconnect.vercel.app/premium-success?session_id={CHECKOUT_SESSION_ID}"
+                )
+                .setCancelUrl(
+                    "https://frontend-psyconnect.vercel.app/devenir-premium"
+                )
+                .putMetadata("user_id", userId)
+                .putMetadata("plan", planId)
+                .addLineItem(
+                    SessionCreateParams.LineItem.builder()
+                        .setQuantity(1L)
+                        .setPriceData(
+                            SessionCreateParams.LineItem.PriceData.builder()
+                                .setCurrency("eur")
+                                .setUnitAmount(amount)
+                                .setProductData(
+                                    SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                        .setName(planName)
+                                        .build()
+                                )
+                                .build()
+                        )
+                        .build()
+                )
+                .build();
+
+        Session session = Session.create(params);
+
+        return session.getUrl();
+    }
 }

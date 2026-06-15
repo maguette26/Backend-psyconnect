@@ -6,9 +6,11 @@ import com.stripe.model.PaymentIntent;
 import com.stripe.net.Webhook;
 
 import jakarta.servlet.http.HttpServletRequest;
-
+import ma.osbt.dto.PremiumRequest;
 import ma.osbt.service.ReservationService;
+import ma.osbt.service.implementation.StripePaymentService;
 
+import org.apache.tomcat.util.net.openssl.ciphers.Authentication;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/webhook/stripe")
@@ -26,6 +29,8 @@ public class StripeWebhookController {
 
     @Autowired
     private ReservationService reservationService;
+    @Autowired
+    private StripePaymentService stripePaymentService;
 
     @PostMapping
     public ResponseEntity<String> handleStripeWebhook(HttpServletRequest request,
@@ -83,5 +88,47 @@ public class StripeWebhookController {
             return ResponseEntity.status(500).body("Erreur serveur: " + e.getMessage());
         }
     }
+    @PostMapping("/premium")
+    public ResponseEntity<Map<String, String>> createPremiumPayment(
+            @RequestBody PremiumRequest request) {
 
+        try {
+
+            String clientSecret =
+                    stripePaymentService.createPremiumPaymentIntent(
+                            request.getPlan(),
+                            "eur",
+                            "",
+                            "",
+                            request.getUserId());
+
+            return ResponseEntity.ok(
+                    Map.of("clientSecret", clientSecret));
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    @PostMapping("/premium-checkout")
+    public ResponseEntity<?> premiumCheckout(
+            @RequestBody PremiumRequest request) {
+
+        try {
+
+            String url =
+                stripePaymentService.createPremiumCheckoutSession(
+                    request.getPlan(),
+                    request.getUserId()
+                );
+
+            return ResponseEntity.ok(
+                Map.of("url", url)
+            );
+
+        } catch (Exception e) {
+
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", e.getMessage()));
+        }
+    }
 }
