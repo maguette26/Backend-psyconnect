@@ -13,4 +13,8 @@ public interface ConsultationService {
 	List<Consultation> getConsultationsParPersonneId(Long personneId);
 	public List<Consultation> getConsultationsParProfessionnelId(Long professionnelId);
 
+	void deleteById(Long id);
+
+	 
+
 }

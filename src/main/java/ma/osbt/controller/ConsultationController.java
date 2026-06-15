@@ -160,4 +160,41 @@ public class ConsultationController {
 
         return ResponseEntity.ok(map);
     }
+    @DeleteMapping("/supprimer/{id}")
+    public ResponseEntity<?> supprimerConsultation(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails user
+    ) {
+        try {
+            // 1. Récupérer la consultation
+            Consultation consultation = consultationService.findById(id);
+
+            if (consultation == null) {
+                return ResponseEntity.status(404).body("Consultation introuvable");
+            }
+
+            // 2. Vérifier que l'utilisateur connecté est bien propriétaire (sécurité)
+            Personne personne = personneRepository.findByEmail(user.getUsername())
+                    .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+
+            if (!(personne instanceof Utilisateur utilisateur)) {
+                return ResponseEntity.status(403).body("Accès interdit");
+            }
+
+            // 3. Vérifier que la consultation appartient bien à l'utilisateur
+         // Ajoute une vérification null sur la reservation
+            if (consultation.getReservation() == null || 
+                !consultation.getReservation().getUtilisateur().getId().equals(utilisateur.getId())) {
+                return ResponseEntity.status(403).body("Vous ne pouvez pas supprimer cette consultation");
+            }
+
+            // 4. Suppression
+            consultationService.deleteById(id);
+
+            return ResponseEntity.ok("Consultation supprimée avec succès");
+
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Erreur serveur : " + e.getMessage());
+        }
+    }
 }
