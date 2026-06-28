@@ -37,7 +37,8 @@ public class StripeWebhookController {
     public ResponseEntity<String> handleStripeWebhook(
             HttpServletRequest request,
             @RequestHeader("Stripe-Signature") String sigHeader) {
-
+    	   System.out.println("========== WEBHOOK RECU ==========");
+    	    System.out.println("Signature : " + sigHeader);
         try {
             String payload = new String(
                     request.getInputStream().readAllBytes(),
@@ -51,37 +52,46 @@ public class StripeWebhookController {
             );
 
             System.out.println("Stripe Event: " + event.getType());
-           
-            System.out.println("ROLE SET = PREMIUM");
-            // =========================
-            // 1. PREMIUM ACTIVATION
-            // =========================
+
             if ("checkout.session.completed".equals(event.getType())) {
+
+                System.out.println("========== ACTIVATION PREMIUM ==========");
 
                 Session session = (Session) event.getDataObjectDeserializer()
                         .getObject()
                         .orElse(null);
 
                 if (session == null) {
+                    System.out.println("❌ Session NULL");
                     return ResponseEntity.badRequest().body("Session null");
                 }
 
+                System.out.println("Session ID : " + session.getId());
+                System.out.println("Metadata : " + session.getMetadata());
+
                 String email = session.getMetadata().get("email");
-                System.out.println("USER EMAIL = " + email);
+
+                System.out.println("Email : " + email);
 
                 if (email == null) {
+                    System.out.println("❌ Email manquant dans les metadata");
                     return ResponseEntity.badRequest().body("Email metadata manquant");
                 }
 
-                Utilisateur user =
-                        utilisateurRepository.findByEmail(email).orElse(null);
+                Utilisateur user = utilisateurRepository.findByEmail(email).orElse(null);
 
-                if (user != null) {
-                    user.setRole(Role.PREMIUM);
-                    utilisateurRepository.save(user);
-
-                    System.out.println("✅ PREMIUM activé pour: " + email);
+                if (user == null) {
+                    System.out.println("❌ Utilisateur introuvable : " + email);
+                    return ResponseEntity.badRequest().body("Utilisateur introuvable");
                 }
+
+                System.out.println("Ancien rôle : " + user.getRole());
+
+                user.setRole(Role.PREMIUM);
+                utilisateurRepository.save(user);
+
+                System.out.println("Nouveau rôle : " + user.getRole());
+                System.out.println("✅ PREMIUM activé pour : " + email);
 
                 return ResponseEntity.ok("Premium activé");
             }
