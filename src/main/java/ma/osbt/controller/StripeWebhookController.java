@@ -1,5 +1,6 @@
 package ma.osbt.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
 import com.stripe.model.PaymentIntent;
@@ -32,6 +33,8 @@ public class StripeWebhookController {
 
     @Autowired
     private UtilisateurRepository utilisateurRepository;
+    
+    private final ObjectMapper mapper = new ObjectMapper();
 
     @PostMapping
     public ResponseEntity<String> handleStripeWebhook(
@@ -39,6 +42,7 @@ public class StripeWebhookController {
             @RequestHeader("Stripe-Signature") String sigHeader) {
     	   System.out.println("========== WEBHOOK RECU ==========");
     	    System.out.println("Signature : " + sigHeader);
+    	    
         try {
             String payload = new String(
                     request.getInputStream().readAllBytes(),
@@ -57,9 +61,10 @@ public class StripeWebhookController {
 
                 System.out.println("========== ACTIVATION PREMIUM ==========");
 
-                Session session = (Session) event.getDataObjectDeserializer()
-                        .getObject()
-                        .orElse(null);
+                Session session = mapper.readValue(
+                        event.getData().getObject().toJson(),
+                        Session.class
+                );
 
                 if (session == null) {
                     System.out.println("❌ Session NULL");
@@ -68,6 +73,10 @@ public class StripeWebhookController {
 
                 System.out.println("Session ID : " + session.getId());
                 System.out.println("Metadata : " + session.getMetadata());
+
+                if (session.getMetadata() == null) {
+                    return ResponseEntity.badRequest().body("Metadata absentes");
+                }
 
                 String email = session.getMetadata().get("email");
 
@@ -101,16 +110,21 @@ public class StripeWebhookController {
             // =========================
             if ("payment_intent.succeeded".equals(event.getType())) {
 
-                PaymentIntent intent = (PaymentIntent) event.getDataObjectDeserializer()
-                        .getObject()
-                        .orElse(null);
+            	PaymentIntent intent = mapper.readValue(
+            	        event.getData().getObject().toJson(),
+            	        PaymentIntent.class
+            	);
 
                 if (intent == null) {
-                    return ResponseEntity.badRequest().body("Intent null");
+                    System.out.println("PaymentIntent introuvable");
+                    return ResponseEntity.ok("Ignored");
                 }
 
-                String reservationIdStr =
-                        intent.getMetadata().get("reservation_id");
+                String reservationIdStr = null;
+
+                if (intent.getMetadata() != null) {
+                    reservationIdStr = intent.getMetadata().get("reservation_id");
+                }
 
                 if (reservationIdStr != null) {
                     Long reservationId = Long.parseLong(reservationIdStr);
