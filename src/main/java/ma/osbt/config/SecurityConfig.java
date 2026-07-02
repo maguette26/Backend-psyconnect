@@ -153,6 +153,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/api/messages/admin/supprimer/**")
                     .hasRole("ADMIN")
                     .requestMatchers("/api/chat/**").authenticated()
+                    .requestMatchers(HttpMethod.GET, "/api/psybot/historique")
+                    .hasAnyRole("USER", "PREMIUM", "PSYCHOLOGUE", "PSYCHIATRE", "ADMIN")
+
+                    .requestMatchers(HttpMethod.POST, "/api/psybot/message")
+                    .hasAnyRole("USER", "PREMIUM", "PSYCHOLOGUE", "PSYCHIATRE", "ADMIN")
                    
                 .anyRequest().authenticated()
             )
