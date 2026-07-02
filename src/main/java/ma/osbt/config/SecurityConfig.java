@@ -257,8 +257,8 @@ public class SecurityConfig {
         return source;
     }
 
-    @Bean
+   /* @Bean
     public Jackson2ObjectMapperBuilderCustomizer jsonCustomizer() {
         return builder -> builder.simpleDateFormat("HH:mm");
-    }
+    }*/
 }

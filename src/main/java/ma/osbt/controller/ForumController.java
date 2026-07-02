@@ -69,11 +69,11 @@ public class ForumController {
     public List<ReponseForum> getReponses(@PathVariable Long id) {
         return reponseRepo.findBySujetIdOrderByDateReponseAsc(id);
     }
-
     @PostMapping("/sujets/reponses/{id}")
     public ResponseEntity<?> repondre(@PathVariable Long id,
                                       @RequestBody ReponseForum reponse,
                                       @AuthenticationPrincipal Personne auteur) {
+
         SujetForum sujet = sujetService.getSujet(id)
                 .orElseThrow(() -> new RuntimeException("Sujet non trouvé"));
 
@@ -90,9 +90,18 @@ public class ForumController {
         reponse.setSujet(sujet);
         reponse.setAuteur(auteur);
         reponse.setDateReponse(LocalDateTime.now());
-        return ResponseEntity.ok(reponseRepo.save(reponse));
+
+        // Sauvegarde de la réponse
+        ReponseForum saved = reponseRepo.save(reponse);
+
+        // Mise à jour de la collection du sujet
+        sujet.getReponses().add(saved);
+
+        // Sauvegarde du sujet
+        sujetService.creerSujet(sujet);
+
+        return ResponseEntity.ok(saved);
     }
-    
     // Modifier un sujet
     @PutMapping("/sujets/{id}")
     public ResponseEntity<?> modifierSujet(@PathVariable Long id,

@@ -1,7 +1,7 @@
 package ma.osbt.entitie;
 import java.time.LocalDateTime;
 
-
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.Column;
@@ -28,6 +28,7 @@ public class ReponseForum {
     @Column(columnDefinition = "LONGTEXT")  
     private String message;
 
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime dateReponse = LocalDateTime.now();
     @JsonIgnore
     @ManyToOne

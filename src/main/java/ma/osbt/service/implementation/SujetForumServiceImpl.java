@@ -16,7 +16,12 @@ public class SujetForumServiceImpl implements SujetForumService {
 
     @Override
     public List<SujetForum> listerSujets() {
-        return sujetRepo.findAllByOrderByDateCreationDesc();
+
+        List<SujetForum> sujets = sujetRepo.findAllByOrderByDateCreationDesc();
+
+        sujets.forEach(s -> s.getReponses().size());
+
+        return sujets;
     }
 
     @Override
