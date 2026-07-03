@@ -94,4 +94,79 @@ public class NotificationServiceImpl implements NotificationService {
             }
         }
     }
+    @Override
+    public void envoyerMailReinitialisation(Personne personne, String lien) {
+
+        try {
+
+            MimeMessage message = mailSender.createMimeMessage();
+
+            MimeMessageHelper helper =
+                    new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setTo(personne.getEmail());
+
+            helper.setSubject("🔐 Réinitialisation de votre mot de passe PsyConnect");
+
+            String html = """
+                <html>
+                <body style="font-family:Arial,sans-serif">
+
+                <h2 style="color:#2563EB">
+                    Réinitialisation du mot de passe
+                </h2>
+
+                <p>Bonjour <b>%s</b>,</p>
+
+                <p>
+                Vous avez demandé la réinitialisation de votre mot de passe.
+                </p>
+
+                <p>
+                Cliquez sur le bouton ci-dessous :
+                </p>
+
+                <a href="%s"
+                   style="
+                   background:#2563EB;
+                   color:white;
+                   padding:12px 22px;
+                   text-decoration:none;
+                   border-radius:8px;">
+                   Réinitialiser mon mot de passe
+                </a>
+
+                <br><br>
+
+                <p>
+                Ce lien est valable pendant <b>30 minutes</b>.
+                </p>
+
+                <p>
+                Si vous n'êtes pas à l'origine de cette demande,
+                ignorez simplement cet e-mail.
+                </p>
+
+                <hr>
+
+                <small>
+                © PsyConnect
+                </small>
+
+                </body>
+                </html>
+                """.formatted(personne.getPrenom(), lien);
+
+            helper.setText(html, true);
+
+            mailSender.send(message);
+
+        } catch (Exception e) {
+
+            throw new RuntimeException(
+                    "Erreur lors de l'envoi du mail.", e);
+
+        }
+
+    }
 }

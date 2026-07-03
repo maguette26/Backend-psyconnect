@@ -98,7 +98,10 @@ public class SecurityConfig {
                     "/webhook/paypal/**",
                     "/ws-consultation/**",
                    "/api/health",
-                   "/health"
+                   "/health",
+                		    "/api/auth/forgot-password",
+                		    "/api/auth/reset-password"
+                		 
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/fonctionnalites/**")
                     .hasAnyRole("USER", "PSYCHOLOGUE", "PSYCHIATRE", "ADMIN")
