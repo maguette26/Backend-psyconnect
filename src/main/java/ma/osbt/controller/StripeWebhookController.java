@@ -137,11 +137,16 @@ public class StripeWebhookController {
             return ResponseEntity.ok("Ignored event");
 
         } catch (SignatureVerificationException e) {
+            e.printStackTrace();
             return ResponseEntity.status(400).body("Signature invalide");
         } catch (IOException e) {
-            return ResponseEntity.status(500).body("Erreur IO");
+            System.err.println("===== IOException =====");
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Erreur IO : " + e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Erreur serveur: " + e.getMessage());
+            System.err.println("===== Exception =====");
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Erreur serveur : " + e.getMessage());
         }
     }
     
