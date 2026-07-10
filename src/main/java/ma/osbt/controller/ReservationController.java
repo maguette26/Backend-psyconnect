@@ -227,6 +227,10 @@ private ConsultationRepository consultationRepository;
         try {
             Reservation reservationAnnulee = reservationService.annulerReservation(id, personne.getId());
             return ResponseEntity.ok(reservationAnnulee);
+        } catch (IllegalStateException alreadyCancelled) {
+            // déjà annulée -> idempotent, on renvoie 200 quand même
+            Reservation existante = reservationService.getById(id).orElse(null);
+            return ResponseEntity.ok(existante);
         } catch (RuntimeException ex) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", ex.getMessage()));
         } catch (Exception ex) {
