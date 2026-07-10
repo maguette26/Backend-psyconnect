@@ -22,6 +22,7 @@ import ma.osbt.entitie.Role;
 import ma.osbt.entitie.Utilisateur;
 import ma.osbt.repository.PersonneRepository;
 import ma.osbt.repository.UtilisateurRepository;
+import ma.osbt.service.PasswordResetService;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -43,7 +44,8 @@ public class AuthController {
     // 🔧 Ajouté : nécessaire pour régénérer un JWT à jour après un changement de rôle
     @Autowired
     private JwtUtils jwtUtils;
-
+    @Autowired
+    private PasswordResetService passwordResetService;
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@Validated @RequestBody RegisterRequest signUpRequest) {
         if (userRepository.existsByEmail(signUpRequest.getEmail())) {
@@ -179,6 +181,27 @@ public class AuthController {
         @NotBlank(message = "La confirmation du mot de passe est obligatoire")
         private String confirmMotDePasse;
     }
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(
+            @RequestBody ForgotPasswordRequest request) {
+
+        passwordResetService.envoyerLienReinitialisation(request.getEmail());
+
+        return ResponseEntity.ok(
+                Map.of("message",
+                        "Si un compte existe avec cet email, un lien de réinitialisation a été envoyé."));
+    }
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(
+            @RequestBody ResetPasswordRequest request) {
+
+        passwordResetService.reinitialiserMotDePasse(
+                request.getToken(),
+                request.getNouveauMotDePasse());
+
+        return ResponseEntity.ok(
+                Map.of("message", "Mot de passe réinitialisé avec succès."));
+    }
 
     // ── Exception handler ─────────────────────────────────
     @RestControllerAdvice
@@ -190,5 +213,21 @@ public class AuthController {
                 .collect(Collectors.joining(", "));
             return ResponseEntity.badRequest().body(Map.of("errors", errorMessage));
         }
+    }
+    @Data
+    public static class ForgotPasswordRequest {
+        @Email
+        @NotBlank
+        private String email;
+    }
+
+    @Data
+    public static class ResetPasswordRequest {
+        @NotBlank
+        private String token;
+
+        @NotBlank
+        @Size(min = 6)
+        private String nouveauMotDePasse;
     }
 }

@@ -46,7 +46,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
 
             tokenRepository.save(passwordResetToken);
 
-            String lien = "http://localhost:5173/reset-password/" + token;
+            String lien = "https://frontend-psyconnect.vercel.app/reset-password/" + token;
 
             notificationService.envoyerMailReinitialisation(utilisateur, lien);
 
