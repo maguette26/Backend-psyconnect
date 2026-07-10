@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import ma.osbt.config.JwtUtils;
 import ma.osbt.entitie.Personne;
 import ma.osbt.entitie.Role;
 import ma.osbt.entitie.Utilisateur;
@@ -38,6 +39,10 @@ public class AuthController {
 
     @Autowired
     private PersonneRepository personneRepository;
+
+    // 🔧 Ajouté : nécessaire pour régénérer un JWT à jour après un changement de rôle
+    @Autowired
+    private JwtUtils jwtUtils;
 
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@Validated @RequestBody RegisterRequest signUpRequest) {
@@ -97,6 +102,18 @@ public class AuthController {
             "telephone", user.getTelephone(),
             "role", role
         ));
+    }
+
+   
+    @PostMapping("/refresh-token")
+    public ResponseEntity<?> refreshToken(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
+        }
+
+        String newToken = jwtUtils.generateToken(authentication);
+
+        return ResponseEntity.ok(Map.of("token", newToken));
     }
 
     @PutMapping("/profile")
