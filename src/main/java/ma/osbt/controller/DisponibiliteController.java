@@ -1,7 +1,6 @@
 package ma.osbt.controller;
 
 import java.time.LocalDate;
-
 import java.util.List;
 
 import org.springframework.format.annotation.DateTimeFormat;
@@ -20,6 +19,17 @@ import ma.osbt.service.DisponibiliteService;
 public class DisponibiliteController {
 
     private final DisponibiliteService disponibiliteService;
+
+    
+    private static final List<String> ROLES_AUTORISES_CONSULTATION = List.of(
+            "ROLE_USER", "ROLE_PREMIUM", "ROLE_PSYCHOLOGUE", "ROLE_PSYCHIATRE"
+    );
+
+    private boolean utilisateurCourantAutorise() {
+        return SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(ROLES_AUTORISES_CONSULTATION::contains);
+    }
 
     @PostMapping()
     public ResponseEntity<Disponibilite> ajouter(@RequestBody Disponibilite disponibilite) {
@@ -47,38 +57,31 @@ public class DisponibiliteController {
             @PathVariable Long proId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 
-        boolean authorized = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .anyMatch(r -> r.equals("ROLE_USER") || r.equals("ROLE_PSYCHOLOGUE") || r.equals("ROLE_PSYCHIATRE"));
-
-        if (!authorized) {
+        // 🔧 CORRECTION : utilise désormais la liste centralisée incluant ROLE_PREMIUM
+        if (!utilisateurCourantAutorise()) {
             throw new RuntimeException("Accès refusé : rôle insuffisant");
         }
-
         return ResponseEntity.ok(disponibiliteService.getDisponibilitesFiltrees(proId, date));
     }
 
     @GetMapping("/{proId}")
     public ResponseEntity<List<Disponibilite>> getDisponibilitesByProId(@PathVariable Long proId) {
-        boolean authorized = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .anyMatch(r -> r.equals("ROLE_USER") || r.equals("ROLE_PSYCHOLOGUE") || r.equals("ROLE_PSYCHIATRE"));
 
-        if (!authorized) {
+        // 🔧 CORRECTION : utilise désormais la liste centralisée incluant ROLE_PREMIUM
+        if (!utilisateurCourantAutorise()) {
             throw new RuntimeException("Accès refusé : rôle insuffisant");
         }
 
         List<Disponibilite> disponibilites = disponibiliteService.getDisponibilitesByProId(proId);
-
         // Charger explicitement les réservations pour chaque disponibilité si nécessaire
         disponibilites.forEach(d -> {
             if (d.getReservations() != null) {
                 d.getReservations().size(); // Force le chargement si lazy
             }
         });
-
         return ResponseEntity.ok(disponibilites);
     }
+
     @GetMapping("/publiques")
     public ResponseEntity<?> getDisponibilitesPubliques() {
         return ResponseEntity.ok(disponibiliteService.getDisponibilitesPubliques());
