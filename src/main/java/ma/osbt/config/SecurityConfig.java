@@ -2,7 +2,6 @@ package ma.osbt.config;
 
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -265,13 +264,4 @@ public class SecurityConfig {
     public Jackson2ObjectMapperBuilderCustomizer jsonCustomizer() {
         return builder -> builder.simpleDateFormat("HH:mm");
     }*/
-    
-    @Bean
-    public FilterRegistrationBean<JwtAuthenticationFilter> disableAutoRegistration(
-            JwtAuthenticationFilter filter) {
-        FilterRegistrationBean<JwtAuthenticationFilter> registration =
-            new FilterRegistrationBean<>(filter);
-        registration.setEnabled(false);
-        return registration;
-    }
 }
