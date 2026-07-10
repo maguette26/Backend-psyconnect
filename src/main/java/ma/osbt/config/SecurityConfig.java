@@ -130,6 +130,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/reservations/annuler/*").hasRole("USER")
                 .requestMatchers(HttpMethod.POST, "/api/payments/**").hasRole("USER")
                 .requestMatchers("/api/professionnels/tous").hasAnyRole("USER", "ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/reservations/*/statut")
+                .hasAnyRole("PSYCHOLOGUE", "PSYCHIATRE")
                 .requestMatchers(HttpMethod.GET, "/api/reservations/pro/**")
                     .hasAnyRole("PSYCHOLOGUE", "PSYCHIATRE")
                     .requestMatchers(HttpMethod.PUT, "/api/reservations/statut/**")

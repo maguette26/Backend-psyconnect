@@ -12,6 +12,7 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.core.io.ByteArrayResource;
 
 import org.springframework.stereotype.Service;
@@ -34,6 +35,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @Async
     public void notifier(Personne destinataire, String messageHtml) {
         if (destinataire == null || destinataire.getEmail() == null) return;
 
@@ -52,7 +54,7 @@ public class NotificationServiceImpl implements NotificationService {
             logger.error("❌ Erreur envoi email à " + destinataire.getEmail(), e);
         }
     }
-
+    @Async
     public void notifierAvecPieceJointe(Personne destinataire, String messageHtml, byte[] pdfData, String fileName) {
         if (destinataire == null || destinataire.getEmail() == null) return;
 
