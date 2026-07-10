@@ -3,8 +3,10 @@ package ma.osbt.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
+import com.stripe.model.EventDataObjectDeserializer;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.checkout.Session;
+import com.stripe.net.ApiResource;
 import com.stripe.net.Webhook;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,16 +35,16 @@ public class StripeWebhookController {
 
     @Autowired
     private UtilisateurRepository utilisateurRepository;
-    
+
     private final ObjectMapper mapper = new ObjectMapper();
 
     @PostMapping
     public ResponseEntity<String> handleStripeWebhook(
             HttpServletRequest request,
             @RequestHeader("Stripe-Signature") String sigHeader) {
-    	   System.out.println("========== WEBHOOK RECU ==========");
-    	    System.out.println("Signature : " + sigHeader);
-    	    
+        System.out.println("========== WEBHOOK RECU ==========");
+        System.out.println("Signature : " + sigHeader);
+
         try {
             String payload = new String(
                     request.getInputStream().readAllBytes(),
@@ -57,14 +59,21 @@ public class StripeWebhookController {
 
             System.out.println("Stripe Event: " + event.getType());
 
+            EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
+
             if ("checkout.session.completed".equals(event.getType())) {
 
                 System.out.println("========== ACTIVATION PREMIUM ==========");
 
-                Session session = mapper.readValue(
-                        event.getData().getObject().toJson(),
-                        Session.class
-                );
+                Session session;
+                if (dataObjectDeserializer.getObject().isPresent()) {
+                    session = (Session) dataObjectDeserializer.getObject().get();
+                } else {
+                    // fallback si l'API version de l'event diffère de celle du SDK
+                    session = ApiResource.GSON.fromJson(
+                            event.getData().getObject().toJson(), Session.class
+                    );
+                }
 
                 if (session == null) {
                     System.out.println("❌ Session NULL");
@@ -110,10 +119,14 @@ public class StripeWebhookController {
             // =========================
             if ("payment_intent.succeeded".equals(event.getType())) {
 
-            	PaymentIntent intent = mapper.readValue(
-            	        event.getData().getObject().toJson(),
-            	        PaymentIntent.class
-            	);
+                PaymentIntent intent;
+                if (dataObjectDeserializer.getObject().isPresent()) {
+                    intent = (PaymentIntent) dataObjectDeserializer.getObject().get();
+                } else {
+                    intent = ApiResource.GSON.fromJson(
+                            event.getData().getObject().toJson(), PaymentIntent.class
+                    );
+                }
 
                 if (intent == null) {
                     System.out.println("PaymentIntent introuvable");
@@ -149,5 +162,5 @@ public class StripeWebhookController {
             return ResponseEntity.status(500).body("Erreur serveur : " + e.getMessage());
         }
     }
-    
+
 }
