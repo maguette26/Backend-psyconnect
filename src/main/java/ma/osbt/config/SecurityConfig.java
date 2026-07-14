@@ -150,7 +150,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/payments/**").hasAnyRole("USER", "PREMIUM")
 
                 // --- Liste des professionnels : PREMIUM ajouté ---
-                .requestMatchers("/api/professionnels/tous").hasAnyRole("USER", "PREMIUM", "ADMIN")
+                .requestMatchers("/api/professionnels/tous").hasAnyRole("USER", "PREMIUM", "ADMIN","PSYCHOLOGUE", "PSYCHIATRE")
 
                 .requestMatchers(HttpMethod.PUT, "/api/reservations/*/statut")
                     .hasAnyRole("PSYCHOLOGUE", "PSYCHIATRE")

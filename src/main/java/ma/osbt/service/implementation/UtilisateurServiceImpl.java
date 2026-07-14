@@ -15,6 +15,9 @@ import ma.osbt.service.UtilisateurService;
 @Service
 public class UtilisateurServiceImpl implements UtilisateurService {
 
+    // Regex reconnaissant un hash BCrypt déjà encodé (ex: $2a$10$..., $2b$..., $2y$...)
+    private static final String BCRYPT_PATTERN = "^\\$2[aby]?\\$\\d{2}\\$.{53}$";
+
     private final UtilisateurRepository utilisateurRepository;
     private final ProfessionnelSanteMentaleRepository professionnelRepository;
     private final PasswordEncoder passwordEncoder;
@@ -41,8 +44,13 @@ public class UtilisateurServiceImpl implements UtilisateurService {
 
     @Override
     public Utilisateur saveUtilisateur(Utilisateur utilisateur) {
-        if (utilisateur.getMotDePasse() != null && !utilisateur.getMotDePasse().isEmpty()) {
-            utilisateur.setMotDePasse(passwordEncoder.encode(utilisateur.getMotDePasse()));
+        // 🔧 Correction : on ne ré-encode le mot de passe QUE s'il n'est pas déjà
+        // un hash BCrypt. Avant cette correction, un simple changement de rôle
+        // (ex: upgradeToPremium) ré-encodait un mot de passe déjà haché,
+        // rendant l'utilisateur incapable de se reconnecter par la suite.
+        String motDePasse = utilisateur.getMotDePasse();
+        if (motDePasse != null && !motDePasse.isEmpty() && !motDePasse.matches(BCRYPT_PATTERN)) {
+            utilisateur.setMotDePasse(passwordEncoder.encode(motDePasse));
         }
         return utilisateurRepository.save(utilisateur);
     }
@@ -58,16 +66,14 @@ public class UtilisateurServiceImpl implements UtilisateurService {
         if (optUtilisateur.isPresent()) {
             Utilisateur utilisateurAModifier = optUtilisateur.get();
 
-            // Ne modifier que le rôle
             Role nouveauRole = utilisateur.getRole();
 
             if (nouveauRole != null && !nouveauRole.equals(utilisateurAModifier.getRole())) {
                 utilisateurAModifier.setRole(nouveauRole);
 
-                // Si rôle psychologue ou psychiatre, créer professionnel santé mentale
                 if ((nouveauRole == Role.PSYCHOLOGUE || nouveauRole == Role.PSYCHIATRE)
                     && !professionnelRepository.existsById(utilisateurAModifier.getId())) {
-                    
+
                     var professionnel = new ma.osbt.entitie.ProfessionnelSanteMentale();
                     professionnel.setId(utilisateurAModifier.getId());
                     professionnel.setNom(utilisateurAModifier.getNom());
@@ -88,5 +94,4 @@ public class UtilisateurServiceImpl implements UtilisateurService {
             return Optional.empty();
         }
     }
-
 }
